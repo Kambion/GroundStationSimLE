@@ -52,6 +52,7 @@ private:
     CAfsk12      *afsk12;
 
     QThread *sdrThread;
+    bool sdrThreadActive = false;
 
     QVarLengthArray<float, 8192> tmpbuf;   // Needed to remember "overlap" smples
 

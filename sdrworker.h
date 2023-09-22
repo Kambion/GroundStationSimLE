@@ -9,14 +9,12 @@ class SDRWorker : public QThread
 {
     Q_OBJECT
 public:
-    SDRWorker(CAudioBuffer *buffer);
+    SDRWorker(CAudioBuffer *buffer, bool* active);
 
     void run();
-
-    void exit();
 private:
-    bool active = true;
-    CAudioBuffer *buffer;
+    bool* active = nullptr;
+    CAudioBuffer *audioBuffer;
 };
 
 #endif // SDRWORKER_H

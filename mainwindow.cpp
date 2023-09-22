@@ -152,7 +152,8 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
 
         if(inputSelector->currentText() == "RTL-SDR Dongle"){
             /* audio input from RTL-SDR Dongle */
-            sdrThread = new SDRWorker(audioBuffer);
+            sdrThreadActive = true;
+            sdrThread = new SDRWorker(audioBuffer, &sdrThreadActive);
             sdrThread->start();
 
         }else{
@@ -184,7 +185,7 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
     else
     {
         if(inputSelector->currentText() == "RTL-SDR Dongle"){
-            sdrThread->exit();
+            sdrThreadActive = false;
             sdrThread->wait();
             delete sdrThread;
         }else{

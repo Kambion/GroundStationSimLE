@@ -3,30 +3,25 @@
 #include <QLibrary>
 #include <QString>
 #include "rtl-sdr.h"
+#include <fstream>
+#include <math.h>
 
-#define DEFAULT_BUF_LENGTH		(16 * 16384)
-
+#define DEFAULT_BUF_LENGTH		(1 * 16384)
+#define MAXIMUM_OVERSAMPLE		16
+#define MAXIMUM_BUF_LENGTH		(MAXIMUM_OVERSAMPLE * DEFAULT_BUF_LENGTH)
 
 constexpr int SAMPLE_RATE = 2400000;   //2.4MHz
 constexpr int CENTER_FREQ = 89000000; //89.0MHz
 
 static rtlsdr_dev_t *dev = NULL;
 
-void sdrCallback(unsigned char *buf, uint32_t len, void *ctx){
-    qDebug() << buf[0];
-}
-
-SDRWorker::SDRWorker(CAudioBuffer *audioBuffer){
-    this->buffer = audioBuffer;
-    active = true;
+SDRWorker::SDRWorker(CAudioBuffer *audioBuffer, bool* active){
+    this->audioBuffer = audioBuffer;
+    this->active = active;
 }
 
 void SDRWorker::run()
 {
-    uint32_t out_block_size = DEFAULT_BUF_LENGTH;
-
-    //uint8_t *sdrBuffer = (uint8_t*)malloc(out_block_size * sizeof(uint8_t));
-
     if(rtlsdr_open(&dev, 0) < 0){
         qDebug() << "rtlsdr_open failed";
     }
@@ -50,23 +45,18 @@ void SDRWorker::run()
 
     qDebug() << "Reading...";
 
-    uint8_t buf[DEFAULT_BUF_LENGTH];
+    //rtlsdr_read_async(dev, sdrCallback, &active, 0, out_block_size);
 
+    uint8_t buffer[DEFAULT_BUF_LENGTH];
     int n_read = 0;
 
-    rtlsdr_read_async(dev, sdrCallback, NULL, 0, out_block_size);
-
-    //while(active){
-        //int data = rand();
-        //buffer->writeData((const char*)&data, sizeof(int));
-        //usleep(1);
-    //}
+    while(*active){
+        rtlsdr_read_sync(dev, buffer, DEFAULT_BUF_LENGTH, &n_read);
+        //TODO:
+        //Signal Processing
+    }
 
     rtlsdr_close(dev);
     qDebug() << "RTL-SDR Thread end";
 }
 
-void SDRWorker::exit(){
-    rtlsdr_cancel_async(dev);
-    active = false;
-}
