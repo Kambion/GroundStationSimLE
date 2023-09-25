@@ -12,7 +12,7 @@ constexpr int DEFAULT_FC = 80e6;
 constexpr int DEFAULT_RS = 1.024e6;
 constexpr int DEFAULT_READ_SIZE = 1024;
 
-constexpr int SAMPLE_RATE = 1800000;   //2.4MHz
+constexpr int SAMPLE_RATE = 1800000;   //1.8MHz
 constexpr int CENTER_FREQ = 89000000; //89.0MHz
 
 
