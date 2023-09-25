@@ -8,56 +8,29 @@
 #include <complex>
 #include <vector>
 
+double sos9[4][6] = {{ 8.13160323e-09,  1.62632065e-08,  8.13160323e-09,  1.00000000e+00, -1.80102222e+00,  8.13719178e-01},
+                    {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.80826915e+00,  8.40588279e-01},
+                    {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.83026610e+00,  8.91360262e-01},
+                    {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.87714628e+00,  9.60659875e-01}};
+
+double sos4[4][6] = {{ 4.03592929e-06,  8.07185858e-06,  4.03592929e-06,  1.00000000e+00, -1.56114552e+00,  6.20886720e-01},
+                    { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.52504583e+00,  6.76620197e-01},
+                    { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.49217571e+00,  7.79218666e-01},
+                    { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.51874590e+00,  9.18540466e-01}};
+
+double zi9[4][2] = {{ 2.55361726e-06, -2.07641258e-06},
+                    { 3.14494957e-04, -2.63952402e-04},
+                    { 2.04415018e-02, -1.81862975e-02},
+                    { 9.73501515e-01, -9.34387200e-01}};
+double zi4[4][2] ={{ 2.66191580e-04, -1.63744743e-04},
+                    { 6.86099186e-03, -4.55489954e-03},
+                    { 9.22437239e-02, -7.03035913e-02},
+                    {8.94885131e-01, -8.13893168e-01}};
+
+
 std::vector<std::complex<double>> data;
 
 
-void bb_digital_filter(double *b, double *a, double *x, double *y, double *Z, int len_b, uint32_t len_x, int stride_X, int stride_Y)
-{
-    double *ptr_x = x, *ptr_y = y;
-    double *ptr_Z;
-    double *ptr_b = (double*)b;
-    double *ptr_a = (double*)a;
-    double *xn, *yn;
-    const double a0 = *((double *)a);
-    int n;
-    uint32_t k;
-
-    /* normalize the filter coefs only once. */
-    for (n = 0; n < len_b; ++n) {
-        ptr_b[n] /= a0;
-        ptr_a[n] /= a0;
-    }
-
-    for (k = 0; k < len_x; k++) {
-        ptr_b = (double *)b;   /* Reset a and b pointers */
-        ptr_a = (double *)a;
-        xn = (double *)ptr_x;
-        yn = (double *)ptr_y;
-        if (len_b > 1) {
-            ptr_Z = ((double *)Z);
-            *yn = *ptr_Z + *ptr_b  * *xn;   /* Calculate first delay (output) */
-            ptr_b++;
-            ptr_a++;
-            /* Fill in middle delays */
-            for (n = 0; n < len_b - 2; n++) {
-                *ptr_Z =
-                    ptr_Z[1] + *xn * (*ptr_b) - *yn * (*ptr_a);
-                ptr_b++;
-                ptr_a++;
-                ptr_Z++;
-            }
-            /* Calculate last delay */
-            *ptr_Z = *xn * (*ptr_b) - *yn * (*ptr_a);
-        }
-        else {
-            *yn = *xn * (*ptr_b);
-        }
-
-        ptr_y += stride_Y;      /* Move to next input/output point */
-        ptr_x += stride_X;
-    }
-
-}
 template <typename T>
 std::vector<T> validate_pad(std::vector<T>& x, int edge){
 
@@ -83,47 +56,76 @@ std::vector<T> validate_pad(std::vector<T>& x, int edge){
     }
     return result;
 }
-std::vector<std::complex<double>> sosfilt(double sos[4][6], std::vector<std::complex<double>>& x, std::complex<double> zi[4][2]){
-    //TODO
-    //TODO
-    //TODO
-    //TODO
-    //TODO
+
+template <typename T>
+void sosfilt(double sos[4][6], std::vector<T>& x, T zi[4][2], bool reverse_axis){
+    for(int n = 0; n < x.size(); n++){
+        for(int s = 0; s < 4; s++){
+            int i = n;
+            if(reverse_axis) i = x.size() - n - 1;
+            T x_n = x[i];
+            x[i] = sos[s][0] * x_n + zi[s][0];
+            zi[s][0] = (sos[s][1] * x_n - sos[s][4] * x[i] + zi[s][1]);
+            zi[s][1] = (sos[s][2] * x_n - sos[s][5] * x[i]);
+        }
+    }
 }
 
 
-//template <typename T>
-std::vector<std::complex<double>> sosfiltfilt(double sos[4][6], std::vector<std::complex<double>>& x){
+template <typename T>
+void sosfiltfilt(double sos[4][6], std::vector<T>& x){
     int edge = 27;
-    std::vector<std::complex<double>> ext = validate_pad(x, edge);
+    std::vector<T> ext = validate_pad(x, edge);
 
-    std::complex<double> zi[4][2] = {{ 2.55361726e-06, -2.07641258e-06},
-                       { 3.14494957e-04, -2.63952402e-04},
-                        { 2.04415018e-02, -1.81862975e-02},
-                        { 9.73501515e-01, -9.34387200e-01}};
 
-    std::complex<double> x_0 = ext.front();
+
+    T zi[4][2];
+    T zi_copy[4][2];
+
+    T x_0 = ext.front();
     for(int i = 0; i < 4; i++){
         for(int j = 0; j < 2; j++){
+            if(sos[0][0] == sos9[0][0]){
+                zi[i][j] = zi9[i][j];
+            }
+            else{
+                zi[i][j] = zi4[i][j];
+            }
+            zi_copy[i][j] = zi[i][j];
             zi[i][j] *= x_0;
         }
     }
-    std::vector<std::complex<double>> y = sosfilt(sos, x, zi);
+    sosfilt(sos, ext, zi, false);
+
+    T y_0 = ext.back();
+    for(int i = 0; i < 4; i++){
+        for(int j = 0; j < 2; j++){
+            zi_copy[i][j] *= y_0;
+        }
+    }
+    sosfilt(sos, ext, zi_copy, true);
+
+    for(int i = 0; i < x.size(); i++){
+        x[i] = ext[i+edge];
+    }
 }
 
-//template <typename T>
-std::vector<std::complex<double>> decimate(std::vector<std::complex<double>>& x, int q){
+template <typename T>
+std::vector<T> decimate(std::vector<T>& x, int q){
     int n = 8;
     //some magic numbers :) (from python)
-    //bwFM = 200000;
-    //decRate = 1800000/bwFM
-    //sos = cheby1(8, 0.05, 0.8 / decRate, output='sos')
-    double sos[4][6] = {{ 8.13160323e-09,  1.62632065e-08,  8.13160323e-09,  1.00000000e+00, -1.80102222e+00,  8.13719178e-01},
-                        {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.80826915e+00,  8.40588279e-01},
-                        {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.83026610e+00,  8.91360262e-01},
-                        {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.87714628e+00,  9.60659875e-01}};
+    //sos = cheby1(8, 0.05, 0.8 / q, output='sos')
 
-    std::vector<std::complex<double>> y = sosfiltfilt(sos, x);
+    if(q == 9) //9
+        sosfiltfilt(sos9, x);
+    else //4
+       sosfiltfilt(sos4, x);
+    std::vector<T> result;
+    result.resize(int(ceil((double)x.size()/q)));
+    for(int i = 0; i < x.size(); i+=q){
+        result[i/q] = x[i];
+    }
+    return result;
 }
 
 
@@ -134,81 +136,57 @@ void demod(uint32_t len){
 
     data = decimate(data, decRate);
 
-
-    //############################
-    //nie wiem czy to o to chodzi w decimate(), raczej trzeba to zmienić
-    // x3 = sig.decimate(x2, decRate)
-
-    /*for(int i = 0; i < len; i+=decRate){
-        x2[i/decRate] = x1[i];
-    }*/
-
-
-
-    //int length = ceil(len/decRate);
-    //int newFs = SAMPLE_RATE/decRate;
+    int newFs = SAMPLE_RATE/decRate;
     //############################
 
 
 
     //############################
-    //no i ten fragment też nie wiadomo czy działa jak trzeba
+    //działa jak trzeba
     //y4 = x3[1:] * np.conj(x3[:-1])
     //x4 = np.angle(y4)
-    ///std::complex<double> tmp;
-    //for(int i = 1; i < length; i++){
-        //tmp = x2[i-1];
-        //tmp.imag(-1*tmp.imag());
-        //y4[i-1] = std::arg(x2[i]*tmp);
-    //}
-    //length--;
+    std::vector<double> yData;
+    yData.resize(data.size()-1);
+
+    std::complex<double> tmp;
+    for(int i = 1; i < data.size(); i++){
+        tmp = data[i-1];
+        tmp.imag(-1*tmp.imag());
+        yData[i-1] = std::arg(data[i]*tmp);
+    }
     //############################
 
 
-
-    //double d = newFs*75e-6;
-    //double x = exp(-1/d);
-    //double b[1] = {1-x};
-    //double a[2] = {1, -x};
-
-    //double delay[2] = { 0 ,0 };
-
-    //############################
-    //zajebałem z jakiegoś Githuba, działa zajebiście jak porównywałem z sig.lfilter() z scipy'a
-    //x5 = sig.lfilter(b,a,x4)
-    //for(int i = 0; i<length; i++){
-       // bb_digital_filter(b, a, &y4[i], &x4[i], delay, 1, 1, 1, 1);
-    //}
     //############################
 
-
-
+    // tu jest niby dolnoprzepustowy ale jestem leniwym kutasem więc go nie ma
 
     //############################
     //znowu decimate(), tak jak wyżej pewnie do zmiany
     //x6 = sig.decimate(x5, dec_audio)
-    //double audioFreq = 44100;
-    ////int dec_audio = int(newFs/audioFreq);
-    //for(int i = 0; i < length; i+=dec_audio){
-        ///x5[i/decRate] = x4[i];
-    //}
-    ///length = ceil(length/decRate);
+    double audioFreq = 44100;
+    int dec_audio = int(newFs/audioFreq);
+
+    yData = decimate(yData, dec_audio);
     //############################
 
-    ///std::ofstream file("demod_output.txt", std::ios::app);
-    //for(int i = 0; i < length; i++){
-        //file << x5[i] << '\n';
-    //}
-    //file.close();
+
+    std::ofstream file("demod_output.txt", std::ios::app);
+    for(int i = 0; i < yData.size(); i++){
+        yData[i] *= 0.1; //volume adjust
+        file << yData[i] << '\n';
+    }
+    file.close();
 }
 
 
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx){
+    data.resize(BYTES_TO_READ/2);
     for(uint32_t i = 0, q = 1; i < len; i+=2, q+=2){
         data[i/2].real(buf[i]/(255.0/2) - 1);
         data[i/2].imag(buf[q]/(255.0/2) - 1);
     }
-    data.resize(6284667);
+    /*data.resize(6284667);
     std::ifstream file("output.txt");
     double tempReal;
     double tempImag;
@@ -220,10 +198,10 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx){
         data[i].imag(tempImag);
     }
     file.close();
-    demod(6284667);
+    demod(6284667);*/
 
-    //demod(len/2);
-    rtlsdr_cancel_async(dev);
+    demod(len/2);
+    //rtlsdr_cancel_async(dev);
 }
 
 
