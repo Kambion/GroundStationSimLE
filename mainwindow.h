@@ -13,6 +13,9 @@
 #include "multimon/cafsk12.h"
 #include <QThread>
 #include "sdrworker.h"
+#include <QAudioOutput>
+#include <QAudioBuffer>
+#include <QBuffer>
 
 namespace Ui {
     class MainWindow;
@@ -35,6 +38,7 @@ private slots:
     void on_actionSave_triggered();
     void on_actionAbout_triggered();
     void on_actionAboutQt_triggered();
+    void handleStateChanged(QAudio::State newState);
 
 private:
     Ui::MainWindow *ui;
@@ -47,7 +51,10 @@ private:
     QList<QAudioDeviceInfo> inputDevices;   // List of available audio input devices
     QAudioInput  *audioInput;               // Audio input object
     QAudioFormat  audioFormat;              // Audio format info
+    QAudioFormat outputFormat;
     CAudioBuffer *audioBuffer;              // Audio buffer
+    QBuffer *outputBuffer;
+    QAudioOutput *audioOutput;
 
     CAfsk12      *afsk12;
 

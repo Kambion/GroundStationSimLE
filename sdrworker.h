@@ -5,6 +5,8 @@
 #include <QThread>
 #include "audiobuffer.h"
 #include "rtl-sdr.h"
+#include <QBuffer>
+
 
 constexpr int BYTES_TO_READ = 2*256*1024;
 
@@ -23,16 +25,23 @@ class SDRWorker : public QThread
 {
     Q_OBJECT
 public:
-    SDRWorker(CAudioBuffer *buffer, bool* active);
+    SDRWorker(CAudioBuffer *buffer, QBuffer* output, bool* active);
 
     void run();
+    static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx);
 private:
+
     bool initSDR();
+    void initAudio();
     bool setUserValues();
 
     bool* active = nullptr;
     CAudioBuffer *audioBuffer;
+    QBuffer* outputBuffer;
+
+    void* context[3];
     int err_ppm = 1;
+
 };
 
 #endif // SDRWORKER_H

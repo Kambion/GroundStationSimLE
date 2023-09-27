@@ -7,22 +7,23 @@
 #include <math.h>
 #include <complex>
 #include <vector>
+#include <limits>
 
-double sos9[4][6] = {{ 8.13160323e-09,  1.62632065e-08,  8.13160323e-09,  1.00000000e+00, -1.80102222e+00,  8.13719178e-01},
+constexpr double sos9[4][6] = {{ 8.13160323e-09,  1.62632065e-08,  8.13160323e-09,  1.00000000e+00, -1.80102222e+00,  8.13719178e-01},
                     {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.80826915e+00,  8.40588279e-01},
                     {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.83026610e+00,  8.91360262e-01},
                     {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.87714628e+00,  9.60659875e-01}};
 
-double sos4[4][6] = {{ 4.03592929e-06,  8.07185858e-06,  4.03592929e-06,  1.00000000e+00, -1.56114552e+00,  6.20886720e-01},
+constexpr double sos4[4][6] = {{ 4.03592929e-06,  8.07185858e-06,  4.03592929e-06,  1.00000000e+00, -1.56114552e+00,  6.20886720e-01},
                     { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.52504583e+00,  6.76620197e-01},
                     { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.49217571e+00,  7.79218666e-01},
                     { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.51874590e+00,  9.18540466e-01}};
 
-double zi9[4][2] = {{ 2.55361726e-06, -2.07641258e-06},
+constexpr double zi9[4][2] = {{ 2.55361726e-06, -2.07641258e-06},
                     { 3.14494957e-04, -2.63952402e-04},
                     { 2.04415018e-02, -1.81862975e-02},
                     { 9.73501515e-01, -9.34387200e-01}};
-double zi4[4][2] ={{ 2.66191580e-04, -1.63744743e-04},
+constexpr double zi4[4][2] ={{ 2.66191580e-04, -1.63744743e-04},
                     { 6.86099186e-03, -4.55489954e-03},
                     { 9.22437239e-02, -7.03035913e-02},
                     {8.94885131e-01, -8.13893168e-01}};
@@ -58,7 +59,7 @@ std::vector<T> validate_pad(std::vector<T>& x, int edge){
 }
 
 template <typename T>
-void sosfilt(double sos[4][6], std::vector<T>& x, T zi[4][2], bool reverse_axis){
+void sosfilt(const double sos[4][6], std::vector<T>& x, T zi[4][2], bool reverse_axis){
     for(int n = 0; n < x.size(); n++){
         for(int s = 0; s < 4; s++){
             int i = n;
@@ -73,7 +74,7 @@ void sosfilt(double sos[4][6], std::vector<T>& x, T zi[4][2], bool reverse_axis)
 
 
 template <typename T>
-void sosfiltfilt(double sos[4][6], std::vector<T>& x){
+void sosfiltfilt(const double sos[4][6], std::vector<T>& x){
     int edge = 27;
     std::vector<T> ext = validate_pad(x, edge);
 
@@ -130,7 +131,7 @@ std::vector<T> decimate(std::vector<T>& x, int q){
 
 
 
-void demod(uint32_t len){
+void demod(std::vector<double>& output, uint32_t len){
     double bwFM = 200000;
     int decRate = SAMPLE_RATE/bwFM;
 
@@ -145,14 +146,13 @@ void demod(uint32_t len){
     //działa jak trzeba
     //y4 = x3[1:] * np.conj(x3[:-1])
     //x4 = np.angle(y4)
-    std::vector<double> yData;
-    yData.resize(data.size()-1);
+    output.resize(data.size()-1);
 
     std::complex<double> tmp;
     for(int i = 1; i < data.size(); i++){
         tmp = data[i-1];
         tmp.imag(-1*tmp.imag());
-        yData[i-1] = std::arg(data[i]*tmp);
+        output[i-1] = std::arg(data[i]*tmp);
     }
     //############################
 
@@ -167,46 +167,58 @@ void demod(uint32_t len){
     double audioFreq = 44100;
     int dec_audio = int(newFs/audioFreq);
 
-    yData = decimate(yData, dec_audio);
+    output = decimate(output, dec_audio);
     //############################
 
 
-    std::ofstream file("demod_output.txt", std::ios::app);
-    for(int i = 0; i < yData.size(); i++){
-        yData[i] *= 0.1; //volume adjust
-        file << yData[i] << '\n';
+    /*std::ofstream file("demod_output.txt", std::ios::app);
+    for(int i = 0; i < output.size(); i++){
+        output[i] *= 0.1; //volume adjust
+        file << output[i] << '\n';
     }
-    file.close();
+    file.close();*/
 }
 
 
-static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx){
+void SDRWorker::rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx){
+    CAudioBuffer *audioBuffer = (CAudioBuffer*) ((void**)ctx)[0];
+    QBuffer *outputBuffer = (QBuffer*) ((void**)ctx)[1];
+    bool *active = (bool*) ((void**)ctx)[2];
+
+    if(!*active){
+        rtlsdr_cancel_async(dev);
+    }
+
     data.resize(BYTES_TO_READ/2);
     for(uint32_t i = 0, q = 1; i < len; i+=2, q+=2){
         data[i/2].real(buf[i]/(255.0/2) - 1);
         data[i/2].imag(buf[q]/(255.0/2) - 1);
     }
-    /*data.resize(6284667);
-    std::ifstream file("output.txt");
-    double tempReal;
-    double tempImag;
-    for(int i = 0; i < 6284667; i++){
-        std::string temp;
-        getline(file, temp);
-        sscanf(temp.c_str(), "%lf%lfj", &tempReal, &tempImag);
-        data[i].real(tempReal);
-        data[i].imag(tempImag);
-    }
-    file.close();
-    demod(6284667);*/
+    std::vector<double> output;
 
-    demod(len/2);
+    demod(output, len/2);
+
+    std::vector<int16_t> scaledOutput;
+    std::vector<int16_t> integerOutput;
+    integerOutput.resize(output.size());
+    scaledOutput.resize(output.size()/2);
+
+    for(int i = 0; i < output.size(); i++){\
+        if(i%2==0)
+            scaledOutput[i/2] = std::numeric_limits<int16_t>::max()*output[i]/8;
+        integerOutput[i] = std::numeric_limits<int16_t>::max()*output[i]/8;
+    }
+    qint64 toWrite = sizeof(int16_t)*output.size();
+    audioBuffer->writeData((const char*)scaledOutput.data(), toWrite/2);
+    outputBuffer->write((const char*)integerOutput.data(), toWrite);
+    outputBuffer->seek(outputBuffer->pos() - toWrite);
     //rtlsdr_cancel_async(dev);
 }
 
 
-SDRWorker::SDRWorker(CAudioBuffer *audioBuffer, bool* active){
+SDRWorker::SDRWorker(CAudioBuffer *audioBuffer, QBuffer* output, bool* active){
     this->audioBuffer = audioBuffer;
+    this->outputBuffer = output;
     this->active = active;
 }
 //####RTL-SDR DONGLE INIT####
@@ -235,7 +247,6 @@ bool SDRWorker::initSDR(){
     return true;
 }
 
-
 //####RTL-SDR SETTING SELECTED VALUES####
 // returns true if success
 bool SDRWorker::setUserValues(){
@@ -251,6 +262,10 @@ bool SDRWorker::setUserValues(){
 
 void SDRWorker::run()
 {
+    context[0] = audioBuffer;
+    context[1] = outputBuffer;
+    context[2] = active;
+
     data.resize(BYTES_TO_READ/2);
     qDebug() << "RTL-SDR init...";
     bool success = initSDR();
@@ -268,7 +283,7 @@ void SDRWorker::run()
     }
     qDebug() << "RTL-SDR Values set";
 
-    int result = rtlsdr_read_async(dev, rtlsdr_callback, NULL, 0, BYTES_TO_READ);
+    int result = rtlsdr_read_async(dev, rtlsdr_callback, this->context, 0, BYTES_TO_READ);
     if(result < 0){
         qDebug() << "RTL-SDR read failed";
     }

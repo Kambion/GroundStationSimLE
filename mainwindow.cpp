@@ -118,7 +118,16 @@ void MainWindow::initialiseAudio()
     audioFormat.setByteOrder(QAudioFormat::LittleEndian);
     audioFormat.setCodec("audio/pcm");
 
+    outputFormat.setSampleRate(44100);
+    outputFormat.setChannelCount(1);
+    outputFormat.setSampleSize(16);
+    outputFormat.setSampleType(QAudioFormat::SignedInt);
+    outputFormat.setByteOrder(QAudioFormat::LittleEndian);
+    outputFormat.setCodec("audio/pcm");
+
     audioBuffer  = new CAudioBuffer(audioFormat, this);
+    outputBuffer = new QBuffer();
+    outputBuffer->open(QIODevice::ReadWrite);
 }
 
 /*
@@ -152,11 +161,18 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
 
         if(inputSelector->currentText() == "RTL-SDR Dongle"){
             /* audio input from RTL-SDR Dongle */
-            sdrThreadActive = true;
-            sdrThread = new SDRWorker(audioBuffer, &sdrThreadActive);
-            sdrThread->start();
+            audioOutput = new QAudioOutput(outputFormat, this);
+            connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), this, SLOT(handleStateChanged(QAudio::State)));
+            audioOutput->start(outputBuffer);
 
-        }else{
+            sdrThreadActive = true;
+            sdrThread = new SDRWorker(audioBuffer, outputBuffer, &sdrThreadActive);
+            sdrThread->start();
+            ui->actionDecode->setToolTip(tr("Stop decoder"));
+            ui->statusBar->showMessage(tr("Decoder running"));
+
+        }
+        else{
             /* check that selected input device supports desired format, if not try nearest */
             QAudioDeviceInfo info(inputDevices.at(inputSelector->currentIndex()));
             if (!info.isFormatSupported(audioFormat))
@@ -171,6 +187,12 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
 
             audioInput = new QAudioInput(inputDevices.at(inputSelector->currentIndex()), audioFormat, this);
 
+            QAudioDeviceInfo outInfo(QAudioDeviceInfo::defaultOutputDevice());
+            if (!info.isFormatSupported(audioFormat)) {
+                    qWarning() << "Raw audio format not supported by backend, cannot play audio.";
+                    return;
+            }
+
             /** TODO: connect signals and slots */
             //connect(audioInput, SIGNAL(notify()), SLOT(notified()));
             connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(audioStateChanged(QAudio::State)));
@@ -184,7 +206,9 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
     }
     else
     {
+        ui->statusBar->showMessage(tr("Stopping decoder"));
         if(inputSelector->currentText() == "RTL-SDR Dongle"){
+            audioOutput->stop();
             sdrThreadActive = false;
             sdrThread->wait();
             delete sdrThread;
@@ -196,10 +220,9 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
             audioInput->stop();
             /** TODO: disconnect signals and slots */
             delete audioInput;
-
-            ui->actionDecode->setToolTip(tr("Start decoder"));
-            ui->statusBar->showMessage(tr("Decoder stopped"));
         }
+        ui->actionDecode->setToolTip(tr("Start decoder"));
+        ui->statusBar->showMessage(tr("Decoder stopped"));
         inputSelector->setDisabled(false);
         /* reset input level indicator */
         ssi->setLevel(0.0);
@@ -297,6 +320,18 @@ void MainWindow::on_actionAbout_triggered()
 void MainWindow::on_actionAboutQt_triggered()
 {
     QMessageBox::aboutQt(this, tr("About Qt"));
+}
+
+void MainWindow::handleStateChanged(QAudio::State newState){
+    switch (newState) {
+            case QAudio::IdleState:
+                audioOutput->start(outputBuffer);
+                break;
+
+            default:
+                // ... other cases as appropriate
+                break;
+        }
 }
 
 
