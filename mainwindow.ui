@@ -49,7 +49,7 @@
      <x>0</x>
      <y>0</y>
      <width>743</width>
-     <height>22</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -94,6 +94,7 @@
    <addaction name="separator"/>
    <addaction name="actionSave"/>
    <addaction name="actionClear"/>
+   <addaction name="actionPlayback"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionDecode">
@@ -152,7 +153,7 @@
   </action>
   <action name="actionClear">
    <property name="icon">
-    <iconset resource="qtqtmmmm.qrc">
+    <iconset resource="qtmm.qrc">
      <normaloff>:/icons/icons/clear.png</normaloff>:/icons/icons/clear.png</iconset>
    </property>
    <property name="text">
@@ -160,6 +161,21 @@
    </property>
    <property name="toolTip">
     <string>Clear the received packets</string>
+   </property>
+  </action>
+  <action name="actionPlayback">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="qtmm.qrc">
+     <normaloff>:/icons/icons/playback-off.png</normaloff>:/icons/icons/playback-off.png</iconset>
+   </property>
+   <property name="text">
+    <string>Playback</string>
+   </property>
+   <property name="toolTip">
+    <string>Switch audio playback</string>
    </property>
   </action>
  </widget>

@@ -187,6 +187,7 @@ void SDRWorker::rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx){
 
     if(!*active){
         rtlsdr_cancel_async(dev);
+        return;
     }
 
     data.resize(BYTES_TO_READ/2);

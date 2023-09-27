@@ -49,6 +49,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->mainToolBar->addWidget(ssiSpacer);
     ssi = new CSsi(this);
     ui->mainToolBar->addWidget(ssi);
+    ui->actionPlayback->setDisabled(true);
 
     connect(audioBuffer, SIGNAL(update(qreal)), ssi, SLOT(setLevel(qreal)));
     connect(audioBuffer, SIGNAL(newData(float*,int)), this, SLOT(samplesReceived(float*,int)));
@@ -163,7 +164,8 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
             /* audio input from RTL-SDR Dongle */
             audioOutput = new QAudioOutput(outputFormat, this);
             connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), this, SLOT(handleStateChanged(QAudio::State)));
-            audioOutput->start(outputBuffer);
+
+            ui->actionPlayback->setDisabled(false);
 
             sdrThreadActive = true;
             sdrThread = new SDRWorker(audioBuffer, outputBuffer, &sdrThreadActive);
@@ -208,7 +210,10 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
     {
         ui->statusBar->showMessage(tr("Stopping decoder"));
         if(inputSelector->currentText() == "RTL-SDR Dongle"){
-            audioOutput->stop();
+            if(ui->actionPlayback->isChecked()){
+                ui->actionPlayback->toggle();
+            }
+            ui->actionPlayback->setDisabled(true);
             sdrThreadActive = false;
             sdrThread->wait();
             delete sdrThread;
@@ -334,26 +339,14 @@ void MainWindow::handleStateChanged(QAudio::State newState){
         }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+void MainWindow::on_actionPlayback_toggled(bool checked)
+{
+    if(checked){
+        audioOutput->start(outputBuffer);
+        ui->actionPlayback->setIcon(QIcon(":/icons/icons/playback-on.png"));
+    }else{
+        audioOutput->stop();
+        ui->actionPlayback->setIcon(QIcon(":/icons/icons/playback-off.png"));
+    }
+}
 

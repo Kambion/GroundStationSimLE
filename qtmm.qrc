@@ -4,5 +4,7 @@
         <file>icons/play.png</file>
         <file>icons/save.png</file>
         <file>icons/qtmm.png</file>
+        <file>icons/playback-off.png</file>
+        <file>icons/playback-on.png</file>
     </qresource>
 </RCC>

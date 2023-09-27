@@ -40,6 +40,8 @@ private slots:
     void on_actionAboutQt_triggered();
     void handleStateChanged(QAudio::State newState);
 
+    void on_actionPlayback_toggled(bool arg1);
+
 private:
     Ui::MainWindow *ui;
 
