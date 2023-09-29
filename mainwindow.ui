@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>743</width>
-    <height>417</height>
+    <width>1901</width>
+    <height>942</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,6 +16,9 @@
   <property name="windowIcon">
    <iconset resource="qtmm.qrc">
     <normaloff>:/icons/icons/qtmm.png</normaloff>:/icons/icons/qtmm.png</iconset>
+  </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
   </property>
   <property name="iconSize">
    <size>
@@ -32,14 +35,53 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QPlainTextEdit" name="textView">
-      <property name="readOnly">
-       <bool>true</bool>
-      </property>
-      <property name="maximumBlockCount">
-       <number>1000</number>
-      </property>
-     </widget>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="1" column="2">
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QPlainTextEdit" name="textView">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>600</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="baseSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+          <property name="maximumBlockCount">
+           <number>1000</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QQuickWidget" name="quickWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="resizeMode">
+         <enum>QQuickWidget::SizeRootObjectToView</enum>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -48,7 +90,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>743</width>
+     <width>1901</width>
      <height>20</height>
     </rect>
    </property>
@@ -180,6 +222,13 @@
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>QQuickWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">QtQuickWidgets/QQuickWidget</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="qtmm.qrc"/>
  </resources>

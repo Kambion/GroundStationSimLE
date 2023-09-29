@@ -1,5 +1,5 @@
 
-QT += core gui widgets multimedia
+QT += core gui widgets multimedia quickwidgets
 
 TEMPLATE = app
 
@@ -78,3 +78,5 @@ unix|win32: LIBS += -L$$PWD/libusb-MinGW-x64/lib/ -llibusb-1.0.dll
 
 INCLUDEPATH += $$PWD/libusb-MinGW-x64/include/libusb-1.0
 DEPENDPATH += $$PWD/libusb-MinGW-x64/include/libusb-1.0
+
+DISTFILES +=

@@ -23,6 +23,8 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QTextStream>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -60,6 +62,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(afsk12, SIGNAL(newMessage(QString)), ui->textView, SLOT(appendPlainText(QString)));
 
     ui->statusBar->showMessage(tr("Decoder ready - select and input source then press start"));
+
+    ui->verticalLayout_2->setAlignment(Qt::AlignTop);
+
+    ui->quickWidget->setSource(QUrl("qrc:/map.qml"));
+    ui->quickWidget->show();
+
 }
 
 MainWindow::~MainWindow()
