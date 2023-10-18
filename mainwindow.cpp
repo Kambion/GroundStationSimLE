@@ -119,7 +119,7 @@ void MainWindow::initialiseAudio()
     audioFormat.setByteOrder(QAudioFormat::LittleEndian);
     audioFormat.setCodec("audio/pcm");
 
-    outputFormat.setSampleRate(44100);
+    outputFormat.setSampleRate(22050);
     outputFormat.setChannelCount(1);
     outputFormat.setSampleSize(16);
     outputFormat.setSampleType(QAudioFormat::SignedInt);
@@ -164,6 +164,7 @@ void MainWindow::on_actionDecode_toggled(bool enabled)
             /* audio input from RTL-SDR Dongle */
             audioOutput = new QAudioOutput(outputFormat, this);
             connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), this, SLOT(handleStateChanged(QAudio::State)));
+            audioOutput->setVolume(0.1);
 
             ui->actionPlayback->setDisabled(false);
 

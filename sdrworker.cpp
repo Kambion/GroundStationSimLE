@@ -19,15 +19,37 @@ constexpr double sos4[4][6] = {{ 4.03592929e-06,  8.07185858e-06,  4.03592929e-0
                     { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.49217571e+00,  7.79218666e-01},
                     { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.51874590e+00,  9.18540466e-01}};
 
+constexpr double sos2[4][6] = {{ 6.98737077e-04,  1.39747415e-03,  6.98737077e-04,  1.00000000e+00,  -1.11407399e+00,  3.44905050e-01},
+                    {1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -9.04148511e-01,  4.64939328e-01},
+                    { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -6.44955463e-01,  6.53189753e-01},
+                    { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -4.95922536e-01,  8.74392030e-01}};
+
+constexpr double sos8[4][6] = {{ 2.02485310e-08,  4.04970621e-08,  2.02485310e-08,  1.00000000e+00, -1.77677361e+00,  7.92697396e-01},
+                    { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.78198389e+00,  8.22531910e-01},
+                    { 1.00000000e+00,  2.00000000e+00,  1.00000000e+00,  1.00000000e+00, -1.80215495e+00,  8.78901597e-01},
+                    { 1.00000000e+00,  2.00000000e+00, 1.00000000e+00,  1.00000000e+00, -1.85081259e+00,  9.56022879e-01 }};
+
+
 constexpr double zi9[4][2] = {{ 2.55361726e-06, -2.07641258e-06},
                     { 3.14494957e-04, -2.63952402e-04},
                     { 2.04415018e-02, -1.81862975e-02},
                     { 9.73501515e-01, -9.34387200e-01}};
+
 constexpr double zi4[4][2] ={{ 2.66191580e-04, -1.63744743e-04},
                     { 6.86099186e-03, -4.55489954e-03},
                     { 9.22437239e-02, -7.03035913e-02},
                     {8.94885131e-01, -8.13893168e-01}};
 
+constexpr double zi2[4][2] = {{ 0.01140946, -0.00347744},
+                    { 0.07425697, -0.02804637},
+                    { 0.25627412, -0.1374433 },
+                    { 0.65162078, -0.52673379}};
+
+
+constexpr double zi8[4][2] = {{ 5.06611383e-06, -4.01169767e-06},
+                    { 4.96675533e-04, -4.07628808e-04},
+                    { 2.56498364e-02, -2.24829196e-02},
+                    { 9.68108476e-01, -9.24383780e-01}};
 
 std::vector<std::complex<double>> data;
 
@@ -89,8 +111,14 @@ void sosfiltfilt(const double sos[4][6], std::vector<T>& x){
             if(sos[0][0] == sos9[0][0]){
                 zi[i][j] = zi9[i][j];
             }
-            else{
+            else if(sos[0][0] == sos8[0][0]){
+                zi[i][j] = zi8[i][j];
+            }
+            else if(sos[0][0] == sos4[0][0]){
                 zi[i][j] = zi4[i][j];
+            }
+            else{
+                zi[i][j] = zi2[i][j];
             }
             zi_copy[i][j] = zi[i][j];
             zi[i][j] *= x_0;
@@ -118,9 +146,13 @@ std::vector<T> decimate(std::vector<T>& x, int q){
     //sos = cheby1(8, 0.05, 0.8 / q, output='sos')
 
     if(q == 9) //9
-        sosfiltfilt(sos9, x);
-    else //4
+       sosfiltfilt(sos9, x);
+    else if(q == 8)
+       sosfiltfilt(sos8, x);
+    else if(q == 4)//4
        sosfiltfilt(sos4, x);
+    else //2
+       sosfiltfilt(sos2, x);
     std::vector<T> result;
     result.resize(int(ceil((double)x.size()/q)));
     for(int i = 0; i < x.size(); i+=q){
@@ -164,7 +196,7 @@ void demod(std::vector<double>& output, uint32_t len){
     //############################
     //znowu decimate(), tak jak wyżej pewnie do zmiany
     //x6 = sig.decimate(x5, dec_audio)
-    double audioFreq = 44100;
+    double audioFreq = 22050;
     int dec_audio = int(newFs/audioFreq);
 
     output = decimate(output, dec_audio);
@@ -199,20 +231,16 @@ void SDRWorker::rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx){
 
     demod(output, len/2);
 
-    std::vector<int16_t> scaledOutput;
     std::vector<int16_t> integerOutput;
     integerOutput.resize(output.size());
-    scaledOutput.resize(output.size()/2);
 
     for(int i = 0; i < output.size(); i++){\
-        if(i%2==0)
-            scaledOutput[i/2] = std::numeric_limits<int16_t>::max()*output[i]/8;
         integerOutput[i] = std::numeric_limits<int16_t>::max()*output[i]/8;
     }
     qint64 toWrite = sizeof(int16_t)*output.size();
-    audioBuffer->writeData((const char*)scaledOutput.data(), toWrite/2);
     outputBuffer->write((const char*)integerOutput.data(), toWrite);
     outputBuffer->seek(outputBuffer->pos() - toWrite);
+    audioBuffer->writeData((const char*)integerOutput.data(), toWrite);
     //rtlsdr_cancel_async(dev);
 }
 
@@ -242,8 +270,15 @@ bool SDRWorker::initSDR(){
     result = rtlsdr_set_center_freq(dev, DEFAULT_FC);
         if(result < 0) return false;
 
+    result = rtlsdr_set_tuner_bandwidth(dev, 0);
+    if(result < 0) return false;
+
     result = rtlsdr_set_tuner_gain_mode(dev, 0);
         if(result < 0) return false;
+
+    result = rtlsdr_set_agc_mode(dev, 0);
+        if(result < 0) return false;
+
 
     return true;
 }
